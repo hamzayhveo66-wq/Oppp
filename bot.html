@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بوت تحليل بوكيت أوبشن الذكي</title>
+    <style>
+        :root {
+            --bg-color: #0b0e11;
+            --card-bg: #151a21;
+            --primary: #00e396; /* أخضر للشراء */
+            --danger: #ff4560; /* أحمر للبيع */
+            --text-main: #ffffff;
+            --text-muted: #8b909b;
+            --accent: #008ffb;
+            --border-radius: 12px;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            outline: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: var(--font-family);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* --- شاشة القفل (تسجيل الدخول) --- */
+        #login-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(11, 14, 17, 0.95);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease;
+        }
+
+        .login-box {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+            border: 1px solid #2a2e39;
+        }
+
+        .login-box h2 {
+            margin-bottom: 1.5rem;
+            color: var(--accent);
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 1rem;
+            background: #2a2e39;
+            border: 1px solid #3e4452;
+            border-radius: 6px;
+            color: white;
+            font-size: 1rem;
+            text-align: center;
+            transition: 0.3s;
+        }
+
+        .login-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px rgba(0, 143, 251, 0.3);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 12px;
+            background: var(--accent);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: 0.3s;
+        }
+
+        .btn-login:hover {
+            background: #0069d9;
+        }
+
+        .error-msg {
+            color: var(--danger);
+            margin-top: 10px;
+            font-size: 0.9rem;
+            height: 20px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        /* --- الواجهة الرئيسية --- */
+        #main-app {
+            display: none; /* مخفي حتى تسجيل الدخول */
+            width: 100%;
+            max-width: 800px;
+            padding: 20px;
+            animation: fadeIn 0.8s ease;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #2a2e39;
+            padding-bottom: 1rem;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo span { color: var(--accent); }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid var(--danger);
+            color: var(--danger);
+            padding: 5px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .logout-btn:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        /* --- منطقة رفع الصورة --- */
+        .upload-area {
+            background: var(--card-bg);
+            border: 2px dashed #3e4452;
+            border-radius: var(--border-radius);
+            padding: 3rem 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.3s;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            border-color: var(--accent);
+            background: #1a2029;
+        }
+
+        .upload-area input {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-icon {
+            font-size: 3rem;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        /* --- معاينة الصورة والتحليل --- */
+        .preview-container {
+            display: none;
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .chart-image {
+            width: 100%;
+            border-radius: var(--border-radius);
+            border: 1px solid #3e4452;
+            display: block;
+        }
+
+        /* تأثير المسح الضوئي */
+        .scanner-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--primary);
+            box-shadow: 0 0 15px var(--primary);
+            animation: scan 2s linear infinite;
+            display: none;
+            z-index: 10;
+        }
+
+        .scan-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 227, 150, 0.1);
+            display: none;
+            pointer-events: none;
+        }
+
+        .analyze-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(45deg, var(--accent), #0056b3);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: none;
+            margin-top: 10px;
+            box-shadow: 0 4px 15px rgba(0, 143, 251, 0.4);
+        }
+
+        .analyze-btn:disabled {
+            background: #3e4452;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* --- قسم النتائج --- */
+        #results-section {
+            display: none;
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            border: 1px solid #3e4452;
+            animation: slideUp 0.5s ease;
+        }
+
+        .result-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #3e4452;
+        }
+
+        .signal-badge {
+            display: inline-block;
+            padding: 10px 30px;
+            border-radius: 50px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .signal-buy { background: rgba(0, 227, 150, 0.2); color: var(--primary); border: 1px solid var(--primary); }
+        .signal-sell { background: rgba(255, 69, 96, 0.2); color: var(--danger); border: 1px solid var(--danger); }
+        .signal-neutral { background: rgba(255, 255, 255, 0.1); color: white; border: 1px solid white; }
+
+        .summary-text {
+            color: var(--text-muted);
+            line-height: 1.6;
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+        }
+
+        .levels-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .level-card {
+            background: #1e242d;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid #3e4452;
+        }
+
+        .level-card h4 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+        }
+
+        .level-value {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
+        .confidence-meter {
+            margin-top: 20px;
+            background: #2a2e39;
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .confidence-bar {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--accent), var(--primary));
+            transition: width 1s ease-out;
+        }
+
+        .confidence-label {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 5px;
+        }
+
+        /* Animations */
+        @keyframes scan {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 600px) {
+            .levels-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- شاشة الحماية -->
+    <div id="login-screen">
+        <div class="login-box">
+            <h2>🔒 نظام الحماية</h2>
+            <p style="margin-bottom: 20px; color: #8b909b;">أدخل رمز الحماية للوصول إلى البوت</p>
+            <input type="password" id="password-input" class="login-input" placeholder="كلمة المرور">
+            <button class="btn-login" onclick="checkPassword()">دخول</button>
+            <div id="error-message" class="error-msg">رمز المرور غير صحيح!</div>
+        </div>
+    </div>
+
+    <!-- التطبيق الرئيسي -->
+    <main id="main-app">
+        <header>
+            <div class="logo">
+                🤖 <span>POCKET</span> ANALYST
+            </div>
+            <button class="logout-btn" onclick="logout()">خروج آمن</button>
+        </header>
+
+        <!-- قسم الرفع -->
+        <section class="upload-area" id="drop-zone">
+            <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+            <div class="upload-content" id="upload-placeholder">
+                <div class="upload-icon">📂</div>
+                <h3>اضغط لرفع صورة الشارت</h3>
+                <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 5px;">أو قم بسحب وإفلات الصورة هنا (PNG, JPG)</p>
+            </div>
+            
+            <!-- معاينة الصورة -->
+            <div class="preview-container" id="preview-box">
+                <div class="scan-overlay" id="scan-overlay"></div>
+                <div class="scanner-line" id="scanner-line"></div>
+                <img src="" alt="Chart" class="chart-image" id="chart-img">
+            </div>
+        </section>
+
+        <button class="analyze-btn" id="analyze-btn" onclick="startAnalysis()">🔍 بدء التحليل الفني</button>
+
+        <!-- قسم النتائج -->
+        <section id="results-section">
+            <div class="result-header">
+                <div id="signal-badge" class="signal-badge">جاري التحليل...</div>
+                <div class="confidence-meter">
+                    <div class="confidence-bar" id="confidence-bar"></div>
+                </div>
+                <div class="confidence-label" id="confidence-text">نسبة الثقة: 0%</div>
+            </div>
+
+            <p class="summary-text" id="summary-text">
+                يتم الآن معالجة البيانات...
+            </p>
+
+            <div class="levels-grid">
+                <div class="level-card">
+                    <h4>🛡️ مستوى حماية أول (SL/TP 1)</h4>
+                    <div class="level-value" id="level-1">--</div>
+                </div>
+                <div class="level-card">
+                    <h4>🛡️ مستوى حماية ثاني (SL/TP 2)</h4>
+                    <div class="level-value" id="level-2">--</div>
+                </div>
+            </div>
+        </section>
+
+        <footer style="margin-top: 40px; text-align: center; color: #444; font-size: 0.8rem;">
+            <p>تنبيه: هذا البوت للأغراض التعليمية والتجريبية فقط. التداول ينطوي على مخاطر عالية.</p>
+        </footer>
+    </main>
+
+    <script>
+        // --- إعدادات البوت ---
+        const SECRET_CODE = "1234"; // الرمز السري
+        
+        // --- عناصر DOM ---
+        const loginScreen = document.getElementById('login-screen');
+        const mainApp = document.getElementById('main-app');
+        const passInput = document.getElementById('password-input');
+        const errorMsg = document.getElementById('error-message');
+        
+        const fileInput = document.getElementById('file-input');
+        const uploadPlaceholder = document.getElementById('upload-placeholder');
+        const previewBox = document.getElementById('preview-box');
+        const chartImg = document.getElementById('chart-img');
+        const analyzeBtn = document.getElementById('analyze-btn');
+        
+        const scannerLine = document.getElementById('scanner-line');
+        const scanOverlay = document.getElementById('scan-overlay');
+        
+        const resultsSection = document.getElementById('results-section');
+        const signalBadge = document.getElementById('signal-badge');
+        const summaryText = document.getElementById('summary-text');
+        const level1 = document.getElementById('level-1');
+        const level2 = document.getElementById('level-2');
+        const confidenceBar = document.getElementById('confidence-bar');
+        const confidenceText = document.getElementById('confidence-text');
+
+        // --- دوال تسجيل الدخول ---
+        function checkPassword() {
+            if (passInput.value === SECRET_CODE) {
+                loginScreen.style.opacity = '0';
+                setTimeout(() => {
+                    loginScreen.style.display = 'none';
+                    mainApp.style.display = 'block';
+                }, 500);
+            } else {
+                errorMsg.style.opacity = '1';
+                passInput.style.borderColor = 'var(--danger)';
+                setTimeout(() => errorMsg.style.opacity = '0', 2000);
+            }
+        }
+
+        function logout() {
+            location.reload(); // إعادة تحميل الصفحة للخروج
+        }
+
+        // --- التعامل مع الصور ---
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    chartImg.src = e.target.result;
+                    uploadPlaceholder.style.display = 'none';
+                    previewBox.style.display = 'block';
+                    analyzeBtn.style.display = 'block';
+                    // إخفاء النتائج القديمة
+                    resultsSection.style.display = 'none';
+                }
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // --- محرك التحليل (محاكاة) ---
+        function startAnalysis() {
+            // 1. واجهة المستخدم في وضع التحميل
+            analyzeBtn.disabled = true;
+            analyzeBtn.innerText = "جاري مسح الشارت...";
+            scannerLine.style.display = 'block';
+            scanOverlay.style.display = 'block';
+            resultsSection.style.display = 'none';
+
+            // 2. محاكاة وقت التحليل (3 ثواني)
+            setTimeout(() => {
+                finishAnalysis();
+            }, 3000);
+        }
+
+        function finishAnalysis() {
+            // إيقاف التأثيرات
+            scannerLine.style.display = 'none';
+            scanOverlay.style.display = 'none';
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerText = "🔍 بدء التحليل الفني";
+
+            // توليد نتيجة عشوائية (لأننا لا نملك AI حقيقي هنا)
+            const isBuy = Math.random() > 0.5;
+            const confidence = Math.floor(Math.random() * (95 - 75 + 1)) + 75; // ثقة بين 75% و 95%
+            
+            // حسابات وهمية للمستويات (يمكن استبدالها بمنطق حقيقي)
+            const basePrice = (Math.random() * 1000).toFixed(2);
+            const level1Val = isBuy ? (basePrice * 0.995).toFixed(2) : (basePrice * 1.005).toFixed(2);
+            const level2Val = isBuy ? (basePrice * 0.990).toFixed(2) : (basePrice * 1.010).toFixed(2);
+
+            // تحديث واجهة النتائج
+            resultsSection.style.display = 'block';
+            
+            // تعيين الإشارة
+            signalBadge.className = 'signal-badge ' + (isBuy ? 'signal-buy' : 'signal-sell');
+            signalBadge.innerText = isBuy ? '📈 شراء (CALL)' : '📉 بيع (PUT)';
+
+            // تعيين الملخص النصي
+            summaryText.innerHTML = isBuy 
+                ? `تشير المؤشرات الفنية إلى <strong>زخم صعودي</strong>. اختراق مستوى المقاومة المصغر يؤكد احتمالية استمرار الصعود للشمعة القادمة.`
+                : `تشير المؤشرات الفنية إلى <strong>ضغط بيعي</strong>. تشكل قمة مزدوجة ت预示 احتمالية انعكاس للأسفل في الشمعة القادمة.`;
+
+            // تعيين المستويات
+            level1.innerText = level1Val;
+            level2.innerText = level2Val;
+
+            // شريط الثقة
+            confidenceBar.style.width = confidence + '%';
+            confidenceText.innerText = `نسبة الثقة: ${confidence}%`;
+
+            // تمرير الشاشة للأسفل للنتائج
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
