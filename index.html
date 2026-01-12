@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المحلل الذكي للأسهم | CryptoBot Analyzer</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-primary: #e0e0e0;
+            --text-secondary: #a0a0a0;
+            --accent-color: #2962ff;
+            --success-color: #00c853;
+            --danger-color: #ff3d00;
+            --warning-color: #ffd600;
+            --border-radius: 12px;
+            --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            font-family: var(--font-family);
+            line-height: 1.6;
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--card-bg);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #333;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .brand {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-badge {
+            font-size: 0.85rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+            background: #333;
+            color: #aaa;
+            transition: all 0.3s ease;
+        }
+
+        .status-badge.active {
+            background: rgba(0, 200, 83, 0.2);
+            color: var(--success-color);
+            box-shadow: 0 0 8px rgba(0, 200, 83, 0.4);
+        }
+
+        /* Main Layout */
+        main {
+            display: grid;
+            grid-template-columns: 3fr 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            flex: 1;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            border: 1px solid #333;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 500px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .pair-info {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .price-display {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            cursor: crosshair;
+        }
+
+        /* Sidebar Controls */
+        .controls-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        select, input[type="range"] {
+            background: #2c2c2c;
+            border: 1px solid #444;
+            color: white;
+            padding: 8px;
+            border-radius: 6px;
+            width: 100%;
+        }
+
+        button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        button:hover {
+            background: #1e54e6;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button.stop-btn {
+            background: var(--danger-color);
+        }
+
+        /* Analysis Log */
+        .log-container {
+            flex: 1;
+            background: #121212;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 10px;
+            overflow-y: auto;
+            max-height: 250px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+        }
+
+        .log-entry {
+            margin-bottom: 6px;
+            border-bottom: 1px solid #222;
+            padding-bottom: 4px;
+        }
+
+        .log-time {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+
+        .log-msg {
+            color: var(--text-primary);
+        }
+
+        .log-msg.buy { color: var(--success-color); }
+        .log-msg.sell { color: var(--danger-color); }
+        .log-msg.info { color: var(--accent-color); }
+
+        /* Signal Box */
+        .signal-box {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 8px;
+            background: #252525;
+            margin-top: 1rem;
+            border: 1px solid #444;
+            transition: all 0.3s;
+        }
+
+        .signal-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+        }
+
+        .signal-value {
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+
+        .signal-box.buy { border-color: var(--success-color); color: var(--success-color); }
+        .signal-box.sell { border-color: var(--danger-color); color: var(--danger-color); }
+        .signal-box.neutral { border-color: var(--warning-color); color: var(--warning-color); }
+
+        /* Toast Notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+            z-index: 1000;
+        }
+        .toast.show { opacity: 1; }
+
+        /* Metrics Grid */
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .metric-item {
+            background: #252525;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .metric-label { font-size: 0.75rem; color: #888; }
+        .metric-val { font-size: 1rem; font-weight: bold; }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="brand">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 20h20"/><path d="M5 20v-4"/><path d="M9 20v-8"/><path d="M13 20v-12"/><path d="M17 20v-16"/></svg>
+        CryptoBot Analyzer
+    </div>
+    <div id="systemStatus" class="status-badge">النظام في وضع الانتظار</div>
+</header>
+
+<main>
+    <!-- Chart Section -->
+    <section class="card chart-container">
+        <div class="chart-header">
+            <div class="pair-info">BTC/USD (محاكاة)</div>
+            <div class="price-display" id="currentPrice">0.00</div>
+        </div>
+        <canvas id="tradingChart"></canvas>
+        <div class="metrics">
+            <div class="metric-item">
+                <div class="metric-label">RSI (14)</div>
+                <div class="metric-val" id="rsiVal">--</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">SMA (20)</div>
+                <div class="metric-val" id="smaVal">--</div>
+            </div>
+            <div class="metric-item">
+                <div class="metric-label">الزخم</div>
+                <div class="metric-val" id="momentumVal">--</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Controls Section -->
+    <aside class="controls-panel">
+        <div class="card">
+            <div class="control-group">
+                <label>سرعة التحليل</label>
+                <input type="range" id="speedRange" min="100" max="2000" value="1000" step="100">
+                <div style="text-align: left; font-size: 0.8rem; color: #888;">(سريع <---> بطيء)</div>
+            </div>
+            
+            <div class="control-group" style="margin-top: 15px;">
+                <button id="toggleBtn" onclick="toggleBot()">تشغيل البوت</button>
+            </div>
+
+            <div class="signal-box neutral" id="signalBox">
+                <div class="signal-title">التوصية الحالية</div>
+                <div class="signal-value" id="signalText">--</div>
+            </div>
+        </div>
+
+        <div class="card" style="flex: 1; display: flex; flex-direction: column;">
+            <div class="control-group">
+                <label>سجل النشاط (Logs)</label>
+                <div class="log-container" id="logContainer">
+                    <div class="log-entry"><span class="log-time">النظام:</span> <span class="log-msg info">جاهز للعمل...</span></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+</main>
+
+<div id="toast" class="toast">تم تحديث التحليل</div>
+
+<script>
+    /**
+     * نظام محاكاة ورسم الشارتات والتحليل الفني
+     * يحتوي على: توليد بيانات، رسم Canvas، حساب المؤشرات، إدارة السجل
+     */
+
+    // --- Configuration ---
+    const CONFIG = {
+        maxCandles: 60,
+        candleWidth: 0, // calculated dynamically
+        spacing: 2,
+        initialPrice: 45000,
+        volatility: 0.002 // 0.2% change per tick
+    };
+
+    // --- State ---
+    let state = {
+        candles: [], // {open, high, low, close, time}
+        isRunning: false,
+        intervalId: null,
+        speed: 1000,
+        signal: 'NEUTRAL'
+    };
+
+    // --- DOM Elements ---
+    const canvas = document.getElementById('tradingChart');
+    const ctx = canvas.getContext('2d');
+    const priceEl = document.getElementById('currentPrice');
+    const logContainer = document.getElementById('logContainer');
+    const signalBox = document.getElementById('signalBox');
+    const signalText = document.getElementById('signalText');
+    const toggleBtn = document.getElementById('toggleBtn');
+    const statusBadge = document.getElementById('systemStatus');
+    const speedRange = document.getElementById('speedRange');
+    const rsiEl = document.getElementById('rsiVal');
+    const smaEl = document.getElementById('smaVal');
+    const momEl = document.getElementById('momentumVal');
+
+    // --- Initialization ---
+    function resizeCanvas() {
+        canvas.width = canvas.parentElement.offsetWidth;
+        canvas.height = canvas.parentElement.offsetHeight - 80; // subtract header space
+        drawChart();
+    }
+    window.addEventListener('resize', resizeCanvas);
+    
+    // Initial Data Population
+    for(let i=0; i<CONFIG.maxCandles; i++) {
+        addCandle(true); // true = silent generation
+    }
+    resizeCanvas();
+    updateMetrics();
+
+    // --- Core Logic: Data Generation ---
+    function addCandle(silent = false) {
+        let lastClose = state.candles.length > 0 ? state.candles[state.candles.length-1].close : CONFIG.initialPrice;
+        
+        // Random walk
+        let change = lastClose * (Math.random() - 0.5) * CONFIG.volatility * 2;
+        let open = lastClose;
+        let close = open + change;
+        
+        // Add some volatility to High/Low
+        let high = Math.max(open, close) + Math.abs(Math.random() * lastClose * CONFIG.volatility);
+        let low = Math.min(open, close) - Math.abs(Math.random() * lastClose * CONFIG.volatility);
+        
+        let candle = {
+            open: open,
+            high: high,
+            low: low,
+            close: close,
+            time: Date.now()
+        };
+
+        state.candles.push(candle);
+        if(state.candles.length > CONFIG.maxCandles) {
+            state.candles.shift();
+        }
+
+        if(!silent) {
+            priceEl.innerText = close.toFixed(2);
+            priceEl.style.color = close >= open ? 'var(--success-color)' : 'var(--danger-color)';
+        }
+    }
+
+    function updateCurrentCandle() {
+        // Simulate live tick for the last candle
+        if(state.candles.length === 0) return;
+        
+        let last = state.candles[state.candles.length - 1];
+        let change = last.close * (Math.random() - 0.5) * (CONFIG.volatility / 2);
+        let newClose = last.close + change;
+        
+        last.close = newClose;
+        last.high = Math.max(last.high, newClose);
+        last.low = Math.min(last.low, newClose);
+
+        priceEl.innerText = newClose.toFixed(2);
+        priceEl.style.color = newClose >= last.open ? 'var(--success-color)' : 'var(--danger-color)';
+    }
+
+    // --- Chart Rendering (Custom Canvas) ---
+    function drawChart() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Calculate Scale
+        let minPrice = Infinity, maxPrice = -Infinity;
+        state.candles.forEach(c => {
+            if(c.low < minPrice) minPrice = c.low;
+            if(c.high > maxPrice) maxPrice = c.high;
+        });
+        
+        // Add padding
+        let range = maxPrice - minPrice;
+        minPrice -= range * 0.1;
+        maxPrice += range * 0.1;
+        
+        const pixelPerPrice = canvas.height / (maxPrice - minPrice);
+        const candleWidth = (canvas.width - (state.candles.length * CONFIG.spacing)) / state.candles.length;
+
+        // Draw Candles
+        state.candles.forEach((c, i) => {
+            let x = i * (candleWidth + CONFIG.spacing);
+            
+            let yOpen = (maxPrice - c.open) * pixelPerPrice;
+            let yClose = (maxPrice - c.close) * pixelPerPrice;
+            let yHigh = (maxPrice - c.high) * pixelPerPrice;
+            let yLow = (maxPrice - c.low) * pixelPerPrice;
+
+            let isGreen = c.close >= c.open;
+            ctx.fillStyle = isGreen ? '#00c853' : '#ff3d00';
+            ctx.strokeStyle = isGreen ? '#00c853' : '#ff3d00';
+
+            // Wick
+            ctx.beginPath();
+            ctx.moveTo(x + candleWidth/2, yHigh);
+            ctx.lineTo(x + candleWidth/2, yLow);
+            ctx.stroke();
+
+            // Body
+            let height = Math.abs(yClose - yOpen);
+            if(height < 1) height = 1; // Minimum height
+            ctx.fillRect(x, Math.min(yOpen, yClose), candleWidth, height);
+        });
+
+        // Draw SMA (Simple Moving Average)
+        ctx.strokeStyle = '#2962ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        let smaPeriod = 20;
+        let started = false;
+
+        for(let i=0; i<state.candles.length; i++) {
+            if(i < smaPeriod - 1) continue;
+            
+            let sum = 0;
+            for(let j=0; j<smaPeriod; j++) {
+                sum += state.candles[i-j].close;
+            }
+            let sma = sum / smaPeriod;
+            let x = i * (candleWidth + CONFIG.spacing) + candleWidth/2;
+            let y = (maxPrice - sma) * pixelPerPrice;
+
+            if(!started) { ctx.moveTo(x, y); started = true; }
+            else { ctx.lineTo(x, y); }
+        }
+        ctx.stroke();
+    }
+
+    // --- Analysis Engine ---
+    function calculateRSI(period = 14) {
+        if(state.candles.length < period + 1) return 50;
+        
+        let gains = 0, losses = 0;
+        
+        // Calculate first average
+        for(let i = state.candles.length - period; i < state.candles.length; i++) {
+            let change = state.candles[i].close - state.candles[i-1].close;
+            if(change > 0) gains += change;
+            else losses += Math.abs(change);
+        }
+        
+        if(losses === 0) return 100;
+        let rs = gains / losses;
+        return 100 - (100 / (1 + rs));
+    }
+
+    function analyzeMarket() {
+        let currentPrice = state.candles[state.candles.length - 1].close;
+        let rsi = calculateRSI();
+        let prevPrice = state.candles[state.candles.length - 2].close;
+        
+        // Update DOM Metrics
+        rsiEl.innerText = rsi.toFixed(1);
+        rsiEl.style.color = rsi > 70 ? 'var(--danger-color)' : (rsi < 30 ? 'var(--success-color)' : 'white');
+        
+        // Calculate SMA for display
+        let sum = 0; 
+        state.candles.slice(-20).forEach(c => sum += c.close);
+        let sma = sum / 20;
+        smaEl.innerText = sma.toFixed(2);
+        
+        momEl.innerText = ((currentPrice - prevPrice) / prevPrice * 100).toFixed(3) + '%';
+
+        // Logic Strategy
+        let signal = 'NEUTRAL';
+        let reason = "";
+
+        if (rsi < 30 && currentPrice > sma) {
+            signal = 'BUY';
+            reason = `RSI ذيلي (${rsi.toFixed(1)}) + السعر فوق المتوسط`;
+        } else if (rsi > 70 && currentPrice < sma) {
+            signal = 'SELL';
+            reason = `RSI ذروة شرائية (${rsi.toFixed(1)}) + السعر تحت المتوسط`;
+        } else if (currentPrice > sma && rsi > 50) {
+            signal = 'HOLD_LONG';
+            reason = 'ترند صاعد، الاحتفاظ بالشراء';
+        } else if (currentPrice < sma && rsi < 50) {
+            signal = 'HOLD_SHORT';
+            reason = 'ترند هابط، الانتظار';
+        }
+
+        // Only log if signal changes or is strong
+        if(signal !== state.signal) {
+            if(signal === 'BUY' || signal === 'SELL') {
+                updateSignalUI(signal, reason);
+                addLog(signal, reason);
+                showToast(`توصية جديدة: ${translateSignal(signal)}`);
+            }
+            state.signal = signal;
+        }
+    }
+
+    // --- UI Updates ---
+    function translateSignal(sig) {
+        if(sig === 'BUY') return 'شراء قوي';
+        if(sig === 'SELL') return 'بيع قوي';
+        if(sig === 'HOLD_LONG') return 'ترند صاعد';
+        if(sig === 'HOLD_SHORT') return 'ترند هابط';
+        return 'محايد';
+    }
+
+    function updateSignalUI(signal, reason) {
+        signalBox.className = `signal-box ${signal === 'BUY' ? 'buy' : (signal === 'SELL' ? 'sell' : 'neutral')}`;
+        signalText.innerText = translateSignal(signal);
+    }
+
+    function addLog(type, msg) {
+        let div = document.createElement('div');
+        div.className = 'log-entry';
+        let time = new Date().toLocaleTimeString('ar-EG');
+        let colorClass = type === 'BUY' ? 'buy' : (type === 'SELL' ? 'sell' : 'info');
+        div.innerHTML = `<span class="log-time">[${time}]</span> <span class="log-msg ${colorClass}">${msg}</span>`;
+        logContainer.prepend(div); // Add to top
+        
+        // Keep only last 50 logs
+        if(logContainer.children.length > 50) {
+            logContainer.removeChild(logContainer.lastChild);
+        }
+    }
+
+    function showToast(msg) {
+        const toast = document.getElementById('toast');
+        toast.innerText = msg;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function updateMetrics() {
+        // Initial draw
+        let sma = 0; 
+        state.candles.slice(-20).forEach(c => sma += c.close);
+        smaEl.innerText = (sma/20).toFixed(2);
+        rsiEl.innerText = calculateRSI().toFixed(1);
+    }
+
+    // --- Bot Control ---
+    function toggleBot() {
+        if(state.isRunning) {
+            // Stop
+            clearInterval(state.intervalId);
+            state.isRunning = false;
+            toggleBtn.innerText = "تشغيل البوت";
+            toggleBtn.classList.remove('stop-btn');
+            statusBadge.innerText = "النظام متوقف";
+            statusBadge.classList.remove('active');
+            addLog('INFO', 'تم إيقاف البوت يدوياً.');
+        } else {
+            // Start
+            state.isRunning = true;
+            toggleBtn.innerText = "إيقاف البوت";
+            toggleBtn.classList.add('stop-btn');
+            statusBadge.innerText = "النظام يعمل ويحلل";
+            statusBadge.classList.add('active');
+            addLog('INFO', 'تم تشغيل البوت. جاري تحليل الشارت...');
+            
+            // Loop
+            let tickCount = 0;
+            state.intervalId = setInterval(() => {
+                // Every 5 ticks, start a new candle, otherwise update current
+                if(tickCount % 5 === 0) {
+                    addCandle();
+                } else {
+                    updateCurrentCandle();
+                }
+                
+                drawChart();
+                analyzeMarket();
+                tickCount++;
+            }, state.speed);
+        }
+    }
+
+    // Speed Listener
+    speedRange.addEventListener('input', (e) => {
+        state.speed = 2100 - e.target.value; // Invert so right is faster
+        if(state.isRunning) {
+            // Restart with new speed
+            clearInterval(state.intervalId);
+            toggleBot(); 
+            toggleBot(); // quick restart hack
+        }
+    });
+
+</script>
+
+</body>
+</html>
